@@ -4,7 +4,7 @@
 %global xsrel %{xsver}%{?xscount}%{?xshash}
 Name:           cmocka
 Version:        1.1.7
-Release: %{?xsrel}%{?dist}
+Release: %{?xsrel}~XCPNG2694.1%{?dist}
 
 License:        Apache-2.0
 Summary:        An elegant unit testing framework for C with support for mock objects
