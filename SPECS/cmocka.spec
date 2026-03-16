@@ -1,8 +1,8 @@
 Name:           cmocka
-Version:        1.1.2
-Release:        1%{?dist}
+Version:        1.1.7
+Release:        6%{?dist}
 
-License:        ASL 2.0
+License:        Apache-2.0
 Summary:        An elegant unit testing framework for C with support for mock objects
 URL:            https://cmocka.org
 
@@ -11,10 +11,12 @@ Source1:        https://cmocka.org/files/1.1/%{name}-%{version}.tar.xz.asc
 Source2:        cmocka.keyring
 
 BuildRequires:  gcc
-BuildRequires:  cmake3
+BuildRequires:  cmake
 BuildRequires:  doxygen
 BuildRequires:  glibc-devel
 BuildRequires:  gnupg2
+
+Obsoletes:      libcmocka-static < %{version}
 
 %description
 There are a variety of C unit testing frameworks available however many of them
@@ -39,7 +41,6 @@ preferable.
 This is the successor of Google's Cmockery.
 
 %package -n libcmocka
-Group:          Development/Libraries
 Summary:        Lightweight library to simplify and generalize unit tests for C
 
 Conflicts: cmockery2
@@ -66,15 +67,7 @@ preferable.
 
 This is the successor of Google's Cmockery.
 
-%package -n libcmocka-static
-Group:          Development/Libraries
-Summary:        Lightweight library to simplify and generalize unit tests for C
-
-%description -n libcmocka-static
-Static version of the cmocka library.
-
 %package -n libcmocka-devel
-Group:          Development/Libraries
 Summary:        Development headers for the cmocka library
 Requires:       libcmocka = %{version}-%{release}
 
@@ -83,52 +76,46 @@ Conflicts: cmockery2-devel
 %description -n libcmocka-devel
 Development headers for the cmocka unit testing library.
 
+%package -n cmocka-doc
+Summary:        API documentation for the cmocka unit testing framework
+BuildArch:      noarch
+
+%description -n cmocka-doc
+This package provides the API documentation for the cmocka unit testing
+framework.
+
 %prep
 %autosetup -p1
 
 %build
-if test ! -e "obj"; then
-  mkdir obj
-fi
-pushd obj
-%cmake3 \
+# This package uses -Wl,-wrap to wrap calls at link time.  This is incompatible
+# with LTO.
+# Disable LTO
+%define _lto_cflags %{nil}
+
+%cmake \
   -DWITH_STATIC_LIB=ON \
   -DWITH_CMOCKERY_SUPPORT=ON \
-  -DUNIT_TESTING=ON \
-  %{_builddir}/%{name}-%{version}
+  -DUNIT_TESTING=ON
 
-make %{?_smp_mflags} VERBOSE=1
-make docs
-popd
+%cmake_build
+%__cmake --build %{__cmake_builddir} --target docs
 
 %install
-pushd obj
-make DESTDIR=%{buildroot} install
-popd
+%cmake_install
 ln -s libcmocka.so %{buildroot}%{_libdir}/libcmockery.so
 
-%post -n libcmocka -p /sbin/ldconfig
-
-%postun -n libcmocka -p /sbin/ldconfig
-
-%clean
-%{__rm} -rf %{buildroot}
+%ldconfig_scriptlets -n libcmocka
 
 %check
-pushd obj
-ctest3 --output-on-failure
-popd
+%ctest
 
 %files -n libcmocka
 %doc AUTHORS README.md ChangeLog
 %license COPYING
 %{_libdir}/libcmocka.so.*
 
-%files -n libcmocka-static
-%{_libdir}/libcmocka.a
-
 %files -n libcmocka-devel
-%doc obj/doc/html
 %{_includedir}/cmocka.h
 %{_includedir}/cmocka_pbc.h
 %{_includedir}/cmockery/cmockery.h
@@ -136,15 +123,105 @@ popd
 %{_libdir}/libcmocka.so
 %{_libdir}/libcmockery.so
 %{_libdir}/pkgconfig/cmocka.pc
-%{_libdir}/cmake/cmocka/cmocka-config-version.cmake
-%{_libdir}/cmake/cmocka/cmocka-config.cmake
+%{_libdir}/cmake/cmocka/cmocka-config*.cmake
+
+%files -n cmocka-doc
+%doc %{__cmake_builddir}/doc/html
 
 %changelog
+* Thu Jan 16 2025 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.7-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_42_Mass_Rebuild
+
+* Wed Jul 17 2024 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.7-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_41_Mass_Rebuild
+
+* Wed Jan 24 2024 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.7-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_40_Mass_Rebuild
+
+* Fri Jan 19 2024 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.7-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_40_Mass_Rebuild
+
+* Wed Jul 19 2023 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.7-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_39_Mass_Rebuild
+
+* Tue Feb 28 2023 Andreas Schneider <asn@redhat.com> - 1.1.7-1
+- Update to version 1.1.7
+  * Update ignore list for source tarball generation
+  * Added new assert macros to compare 2 double given an epsilon
+  * Added meson build system
+  * Added header with version to TAP13 output
+  * Fixed issues with MSVC
+  * Fixed TAP output for skipped tests
+  * Fixed issue with fail_msg
+  * CMake generated configs for find_package(cmocka)
+  * Documentation improvements
+
+* Thu Jan 19 2023 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.5-13
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_38_Mass_Rebuild
+
+* Wed Jul 20 2022 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.5-12
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_37_Mass_Rebuild
+
+* Wed Jan 19 2022 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.5-11
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_36_Mass_Rebuild
+
+* Wed Jul 21 2021 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.5-10
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_35_Mass_Rebuild
+
+* Mon Apr 19 2021 Andreas Schneider <asn@redhat.com> - 1.1.5-9
+- Split out a cmocka-doc package
+
+* Tue Jan 26 2021 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.5-8
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_34_Mass_Rebuild
+
+* Wed Aug 05 2020 Andreas Schneider <asn@redhat.com> - 1.1.5-7
+- Correctly build with new cmake macros
+
+* Sat Aug 01 2020 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.5-6
+- Second attempt - Rebuilt for
+  https://fedoraproject.org/wiki/Fedora_33_Mass_Rebuild
+
+* Mon Jul 27 2020 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.5-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_33_Mass_Rebuild
+
+* Wed Jul  1 2020 Jeff Law <law@redhat.com> - 1.1.5-4
+- Disable LTO
+
+* Tue Jan 28 2020 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.5-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_32_Mass_Rebuild
+
+* Wed Jul 24 2019 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.5-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_31_Mass_Rebuild
+
+* Thu Mar 28 2019 Andreas Schneider <asn@redhat.com> - 1.1.5-1
+- Update to version 1.1.5
+
+* Thu Jan 31 2019 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.3-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
+
+* Thu Sep 27 2018 Andreas Schneider <asn@redhat.com> - 1.1.3-1
+- Update to version 1.1.3
+
 * Wed Aug 29 2018 Andreas Schneider <asn@redhat.com> - 1.1.2-1
 - Update to version 1.1.2
 
-* Fri Apr 07 2017 Andreas Schneider <asn@redhat.com> - 1.1.1-0
-- Update to version 1.1.1
+* Thu Jul 12 2018 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.1-9
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_29_Mass_Rebuild
+
+* Wed Feb 07 2018 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.1-8
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_28_Mass_Rebuild
+
+* Wed Aug 02 2017 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.1-7
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Binutils_Mass_Rebuild
+
+* Wed Jul 26 2017 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.1-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Mass_Rebuild
+
+* Tue Mar 28 2017 Than Ngo <than@redhat.com> - 1.1.0-5
+- added workaround for gcc7 bug on ppc64le temporary 
+
+* Fri Feb 10 2017 Fedora Release Engineering <releng@fedoraproject.org> - 1.1.0-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_26_Mass_Rebuild
 
 * Wed Sep 21 2016 Jakub Hrozek <jhrozek@redhat.com> - 1.1.0-1
 - Update to version 1.1.0
@@ -157,6 +234,12 @@ popd
     * Improved documentation
     * Fixed XML output generataion
     * Fixed Windows builds with VS2015
+
+* Wed Feb 03 2016 Fedora Release Engineering <releng@fedoraproject.org> - 1.0.1-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
+
+* Wed Jun 17 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 1.0.1-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
 
 * Thu Mar 12 2015 Andreas Schneider <asn@redhat.com> - 1.0.1-1
 - Update to version 1.0.1:
@@ -177,6 +260,12 @@ popd
   * Added a cmockery compat header
   * Fixed a lot of bugs on Windows
 
+* Sat Aug 16 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.4.1-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_22_Mass_Rebuild
+
+* Sat Jun 07 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.4.1-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
 * Mon May 26 2014 - Andreas Schneider <asn@redhat.com> - 0.4.1-1
 - Update to version 0.4.1.
 
@@ -186,6 +275,9 @@ popd
 * Wed Nov 06 2013 - Andreas Schneider <asn@redhat.com> - 0.3.2-1
 - Update to version 0.3.2.
 - Include API documentation.
+
+* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.3.1-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
 
 * Wed Jul 10 2013 - Andreas Schneider <asn@redhat.com> - 0.3.0-2
 - Update to version 0.3.1.
